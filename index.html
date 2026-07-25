@@ -128,15 +128,28 @@
   <!-- ================= PAGE LECTEUR ================= -->
   <section id="pageLecteur" class="page visible">
     <div class="chargeur">
-      <button class="btn-neon" id="btnCharger">📂 Installer ma collection (une fois)</button>
+      <button class="btn-neon" id="btnCoffre">🔒 Connecter mon coffre privé GitHub</button>
+      <button class="btn-neon" id="btnCharger" style="background:none;border:2px solid rgba(255,255,255,.25);box-shadow:none">📂 …ou choisir les fichiers à la main</button>
       <button class="btn-neon cyan" id="btnMelangerTout" hidden>🔀 Tout mélanger et jouer !</button>
       <input type="file" id="fichiers" accept="audio/*" multiple hidden>
+
+      <div id="panneauToken" hidden style="background:var(--carte);border:1px solid rgba(255,255,255,.15);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:10px">
+        <p class="aide" style="text-align:left">
+          <b>Une seule fois par appareil :</b><br>
+          1. Ouvre <a href="https://github.com/settings/tokens/new?scopes=repo&description=Radio80" target="_blank" rel="noopener" style="color:var(--cyan)">github.com → créer une clé d'accès</a> (connecté en GitHublien)<br>
+          2. Coche la case <b>« repo »</b>, laisse le reste, clique <b>Generate token</b><br>
+          3. Copie la clé (elle commence par <code>ghp_</code>) et colle-la ici :
+        </p>
+        <input type="password" id="champToken" placeholder="ghp_..." autocomplete="off"
+          style="padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,.25);background:rgba(0,0,0,.3);color:#fff;font-size:1rem">
+        <button class="btn-neon cyan" id="btnValiderToken" style="padding:12px">✅ Connecter et télécharger ma collection</button>
+      </div>
+
       <div class="aide" id="etatCollection" style="font-weight:700;color:var(--jaune)"></div>
       <p class="aide" id="aideChargement">
-        Touche le bouton rose et sélectionne <b>tous tes MP3 années 80</b> —
-        <b>une seule fois</b> : ils entrent dans le logiciel et ta playlist
-        sera <b>déjà prête</b> à chaque ouverture, même sans réseau. 🚗💨<br>
-        Bluetooth, boutons du volant, écran éteint : tout fonctionne.
+        Ta collection privée vit <b>dans GitHub</b> (invisible à tout le monde sauf toi) et
+        s'installe <b>dans le logiciel</b> sur chaque appareil où tu te connectes une fois. 🚗💨<br>
+        Ensuite : Bluetooth, boutons du volant, écran éteint, même sans réseau — tout fonctionne.
       </p>
       <button class="btn-neon" id="btnVider" hidden
         style="background:none;border:2px solid rgba(255,255,255,.25);box-shadow:none;font-size:.9rem;padding:10px">🗑️ Retirer ma collection du logiciel</button>
@@ -466,6 +479,63 @@ btnVider.onclick=async ()=>{
 /* Au démarrage : si la collection est déjà dans le logiciel, tout est prêt */
 lireLeCoffre().then(tout=>{ if(tout.length) monterPlaylist(tout, false); }).catch(()=>{});
 if("serviceWorker" in navigator){ navigator.serviceWorker.register("sw.js").catch(()=>{}); }
+
+/* ---- Coffre privé GitHub : même collection accessible depuis n'importe quel appareil ---- */
+const COFFRE_REPO="GitHublien/radio-80-collection";
+const btnCoffre=document.getElementById("btnCoffre");
+const panneauToken=document.getElementById("panneauToken");
+const champToken=document.getElementById("champToken");
+const btnValiderToken=document.getElementById("btnValiderToken");
+
+function lireCleCoffre(){ return localStorage.getItem("radio80_cle_github")||""; }
+function ecrireCleCoffre(cle){ localStorage.setItem("radio80_cle_github", cle); }
+
+btnCoffre.onclick=()=>{
+  const cle=lireCleCoffre();
+  if(cle){ synchroniserCoffre(cle); }
+  else{ panneauToken.hidden=false; champToken.focus(); }
+};
+btnValiderToken.onclick=()=>{
+  const cle=champToken.value.trim();
+  if(!cle){ return; }
+  ecrireCleCoffre(cle);
+  panneauToken.hidden=true;
+  synchroniserCoffre(cle);
+};
+
+async function synchroniserCoffre(cle){
+  etatCollection.textContent="🔒 Connexion au coffre privé…";
+  try{
+    const rListe=await fetch("https://api.github.com/repos/"+COFFRE_REPO+"/contents/",{
+      headers:{ "Authorization":"token "+cle, "Accept":"application/vnd.github+json" }
+    });
+    if(rListe.status===401){
+      etatCollection.textContent="⚠️ Clé refusée par GitHub — reconnecte-toi.";
+      localStorage.removeItem("radio80_cle_github");
+      panneauToken.hidden=false;
+      return;
+    }
+    if(!rListe.ok) throw new Error("liste HTTP "+rListe.status);
+    const entrees=(await rListe.json()).filter(e=>/\.mp3$/i.test(e.name));
+
+    const fichiers=[];
+    for(let i=0;i<entrees.length;i++){
+      const e=entrees[i];
+      etatCollection.textContent="📥 Téléchargement depuis le coffre privé : "+(i+1)+" / "+entrees.length+"…";
+      const rFichier=await fetch("https://api.github.com/repos/"+COFFRE_REPO+"/contents/"+encodeURIComponent(e.path),{
+        headers:{ "Authorization":"token "+cle, "Accept":"application/vnd.github.raw" }
+      });
+      if(!rFichier.ok) continue;
+      const blob=await rFichier.blob();
+      fichiers.push(new File([blob], e.name, {type:"audio/mpeg"}));
+    }
+    await sauverDansLeCoffre(fichiers);
+    const tout=await lireLeCoffre();
+    monterPlaylist(tout, true);
+  }catch(err){
+    etatCollection.textContent="⚠️ Échec de connexion au coffre privé ("+err.message+").";
+  }
+}
 
 btnMelangerTout.onclick=()=>{
   aleatoire=true; localStorage.setItem("radio80_aleatoire","true");
