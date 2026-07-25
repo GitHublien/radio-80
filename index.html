@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#0a0118">
 <title>📻 RADIO 80 — Le juke-box de Mickaël</title>
+<link rel="manifest" href="manifest.json">
 <style>
   :root{
     --bg:#0a0118; --bg2:#16033a;
@@ -127,15 +128,18 @@
   <!-- ================= PAGE LECTEUR ================= -->
   <section id="pageLecteur" class="page visible">
     <div class="chargeur">
-      <button class="btn-neon" id="btnCharger">📂 Charger mes musiques</button>
+      <button class="btn-neon" id="btnCharger">📂 Installer ma collection (une fois)</button>
       <button class="btn-neon cyan" id="btnMelangerTout" hidden>🔀 Tout mélanger et jouer !</button>
       <input type="file" id="fichiers" accept="audio/*" multiple hidden>
+      <div class="aide" id="etatCollection" style="font-weight:700;color:var(--jaune)"></div>
       <p class="aide" id="aideChargement">
-        Touche le bouton rose, sélectionne <b>tous tes MP3 années 80</b>
-        (sur le téléphone ou la clé USB branchée), et c'est parti —
-        la playlist s'enchaîne toute seule. 🚗💨<br>
-        Le son passe en Bluetooth et les <b>boutons du volant</b> fonctionnent.
+        Touche le bouton rose et sélectionne <b>tous tes MP3 années 80</b> —
+        <b>une seule fois</b> : ils entrent dans le logiciel et ta playlist
+        sera <b>déjà prête</b> à chaque ouverture, même sans réseau. 🚗💨<br>
+        Bluetooth, boutons du volant, écran éteint : tout fonctionne.
       </p>
+      <button class="btn-neon" id="btnVider" hidden
+        style="background:none;border:2px solid rgba(255,255,255,.25);box-shadow:none;font-size:.9rem;padding:10px">🗑️ Retirer ma collection du logiciel</button>
     </div>
     <ul id="listePistes"></ul>
   </section>
@@ -386,19 +390,82 @@ majBoutonsModes();
 
 document.getElementById("btnCharger").onclick=()=>entreeFichiers.click();
 
-entreeFichiers.onchange=()=>{
-  const fichiers=[...entreeFichiers.files].filter(f=>/audio|\.mp3$|\.m4a$|\.ogg$|\.flac$|\.wav$/i.test(f.type+f.name));
-  if(!fichiers.length) return;
+/* ---- la collection vit DANS le logiciel (IndexedDB = coffre privé du navigateur) ---- */
+const etatCollection=document.getElementById("etatCollection");
+const btnVider=document.getElementById("btnVider");
+function ouvrirDB(){
+  return new Promise((res,rej)=>{
+    const r=indexedDB.open("radio80",1);
+    r.onupgradeneeded=()=>{ r.result.createObjectStore("pistes",{keyPath:"nom"}); };
+    r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error);
+  });
+}
+async function sauverDansLeCoffre(fichiers){
+  const db=await ouvrirDB();
+  if(navigator.storage&&navigator.storage.persist) navigator.storage.persist();
+  let n=0;
+  for(const f of fichiers){
+    await new Promise((res,rej)=>{
+      const tx=db.transaction("pistes","readwrite");
+      tx.objectStore("pistes").put({nom:f.name, blob:f});
+      tx.oncomplete=res; tx.onerror=()=>rej(tx.error);
+    });
+    n++;
+    etatCollection.textContent="📦 Installation dans le logiciel : "+n+" / "+fichiers.length+"…";
+  }
+}
+async function lireLeCoffre(){
+  const db=await ouvrirDB();
+  return new Promise((res,rej)=>{
+    const rq=db.transaction("pistes").objectStore("pistes").getAll();
+    rq.onsuccess=()=>res(rq.result||[]); rq.onerror=()=>rej(rq.error);
+  });
+}
+async function viderLeCoffre(){
+  const db=await ouvrirDB();
+  return new Promise((res,rej)=>{
+    const rq=db.transaction("pistes","readwrite").objectStore("pistes").clear();
+    rq.onsuccess=res; rq.onerror=()=>rej(rq.error);
+  });
+}
+function monterPlaylist(enregistrements, demarrer){
+  enregistrements.sort((a,b)=>a.nom.localeCompare(b.nom,"fr",{numeric:true}));
   pistes.forEach(p=>URL.revokeObjectURL(p.url));
-  fichiers.sort((a,b)=>a.name.localeCompare(b.name,"fr",{numeric:true}));
-  pistes=fichiers.map(f=>({nom:nomPropre(f), url:URL.createObjectURL(f)}));
+  pistes=enregistrements.map(r=>({nom:r.nom.replace(/\.[^.]+$/,"").replace(/^\d+[\s.\-_]*/,"").replace(/_+/g," ").trim(), url:URL.createObjectURL(r.blob)}));
   construireOrdre();
   afficherPistes();
   afficherTubes(pistes.map(p=>normaliser(p.nom)));
   btnMelangerTout.hidden=false;
+  btnVider.hidden=false;
   document.getElementById("aideChargement").hidden=true;
-  jouerPosition(0);
+  etatCollection.textContent="🎵 Ta collection est dans le logiciel : "+pistes.length+" titres — touche ▶";
+  if(demarrer){ jouerPosition(0); }
+  else{
+    position=0; const p=pistes[ordre[0]];
+    audio.src=p.url; titreEnCours.textContent="🎶 "+p.nom;
+    barre.hidden=false; surlignerPiste(); majMediaSession(p);
+  }
+}
+entreeFichiers.onchange=async ()=>{
+  const fichiers=[...entreeFichiers.files].filter(f=>/audio|\.mp3$|\.m4a$|\.ogg$|\.flac$|\.wav$/i.test(f.type+f.name));
+  if(!fichiers.length) return;
+  try{
+    await sauverDansLeCoffre(fichiers);
+    const tout=await lireLeCoffre();
+    monterPlaylist(tout, true);
+  }catch(e){
+    etatCollection.textContent="⚠️ Stockage refusé ("+(e&&e.name)+") — lecture directe sans installation.";
+    monterPlaylist(fichiers.map(f=>({nom:f.name, blob:f})), true);
+  }
 };
+btnVider.onclick=async ()=>{
+  if(!confirm("Retirer les "+pistes.length+" titres du logiciel ?")) return;
+  await viderLeCoffre();
+  location.reload();
+};
+/* Au démarrage : si la collection est déjà dans le logiciel, tout est prêt */
+lireLeCoffre().then(tout=>{ if(tout.length) monterPlaylist(tout, false); }).catch(()=>{});
+if("serviceWorker" in navigator){ navigator.serviceWorker.register("sw.js").catch(()=>{}); }
 
 btnMelangerTout.onclick=()=>{
   aleatoire=true; localStorage.setItem("radio80_aleatoire","true");
@@ -450,7 +517,11 @@ function precedent(){
   if(audio.currentTime>4){ audio.currentTime=0; return; }
   jouerPosition(position-1);
 }
-btnLire.onclick=()=>{ if(!pistes.length){entreeFichiers.click();return;} audio.paused?audio.play():audio.pause(); };
+btnLire.onclick=()=>{
+  if(!pistes.length){entreeFichiers.click();return;}
+  if(!audio.src){ jouerPosition(0); return; }
+  audio.paused?audio.play():audio.pause();
+};
 btnSuivant.onclick=suivant;
 btnPrecedent.onclick=precedent;
 btnAleatoire.onclick=()=>{

@@ -1,0 +1,12 @@
+{
+  "name": "Radio 80 — Le juke-box de Mickaël",
+  "short_name": "Radio 80",
+  "description": "Juke-box années 80 : ta collection intégrée + clips YouTube",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#0a0118",
+  "theme_color": "#0a0118",
+  "icons": [
+    { "src": "icone.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}
