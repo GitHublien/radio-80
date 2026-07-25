@@ -119,6 +119,7 @@
 
 <nav>
   <button id="ongletLecteur" class="actif">🎧 Lecteur</button>
+  <button id="ongletYT">📺 Ma Playlist</button>
   <button id="ongletTubes">📼 Les Tubes 80s</button>
 </nav>
 
@@ -137,6 +138,26 @@
       </p>
     </div>
     <ul id="listePistes"></ul>
+  </section>
+
+
+  <!-- ================= PAGE MA PLAYLIST (YouTube) ================= -->
+  <section id="pageYT" class="page">
+    <div class="intro-tubes">
+      <b>Ta playlist années 80 complète</b> — chaque titre joue en clip officiel YouTube
+      et <b>s'enchaîne automatiquement</b>. Touche un titre pour démarrer. 🚗
+      <small style="opacity:.7">(Il faut du réseau et l'écran allumé — en voiture, téléphone sur support + Bluetooth.)</small>
+    </div>
+    <div id="cadreYT" style="position:relative;width:100%;aspect-ratio:16/9;border-radius:14px;overflow:hidden;border:2px solid var(--rose);box-shadow:0 0 18px rgba(255,43,214,.5);background:#000">
+      <div id="lecteurYT"></div>
+    </div>
+    <div class="commandes" style="margin-top:12px">
+      <button id="ytAleatoire" title="Mélanger">🔀</button>
+      <button id="ytPrecedent" title="Précédent">⏮</button>
+      <button id="ytLire" title="Lecture / Pause" style="width:72px;height:72px;font-size:1.9rem;background:linear-gradient(135deg,var(--rose),#a114ff);border-color:transparent;box-shadow:0 0 22px rgba(255,43,214,.65)">▶</button>
+      <button id="ytSuivant" title="Suivant">⏭</button>
+    </div>
+    <ul id="listeYT" style="list-style:none;margin-top:12px"></ul>
   </section>
 
   <!-- ================= PAGE TUBES ================= -->
@@ -312,14 +333,20 @@ const ongletLecteur=document.getElementById("ongletLecteur"),
       ongletTubes=document.getElementById("ongletTubes"),
       pageLecteur=document.getElementById("pageLecteur"),
       pageTubes=document.getElementById("pageTubes");
+const ongletYT=document.getElementById("ongletYT"),
+      pageYT=document.getElementById("pageYT");
 function montrer(page){
   pageLecteur.classList.toggle("visible", page==="lecteur");
   pageTubes.classList.toggle("visible", page==="tubes");
+  pageYT.classList.toggle("visible", page==="yt");
   ongletLecteur.classList.toggle("actif", page==="lecteur");
   ongletTubes.classList.toggle("actif", page==="tubes");
+  ongletYT.classList.toggle("actif", page==="yt");
+  if(page==="yt") initYT();
 }
 ongletLecteur.onclick=()=>montrer("lecteur");
 ongletTubes.onclick=()=>montrer("tubes");
+ongletYT.onclick=()=>montrer("yt");
 
 /* ============ lecteur ============ */
 const audio=document.getElementById("audio"),
@@ -460,6 +487,87 @@ function majMediaSession(piste){
   navigator.mediaSession.setActionHandler("previoustrack", precedent);
   navigator.mediaSession.setActionHandler("nexttrack", suivant);
 }
+
+/* ============ MODE MA PLAYLIST (YouTube) ============ */
+const MA_PLAYLIST = [{"nom":"A-ha - Take On Me","id":"djV11Xbc914"},{"nom":"Alesha Dixon - The Boy Does Nothing","id":"nAeLZs1JSR8"},{"nom":"Alphaville - Forever Young","id":"oNjQXmoxiQ8"},{"nom":"Bananarama - Cruel Summer","id":"l9ml3nyww80"},{"nom":"Black - Wonderful Life","id":"u1ZoHfJZACA"},{"nom":"Black Box - Ride On Time","id":"M0quXl_od3g"},{"nom":"Bob Marley - Could You Be Loved","id":"1ti2YCFgCoI"},{"nom":"Bon Jovi - Livin' On A Prayer","id":"lDK9QqIzhwk"},{"nom":"Bonnie Tyler - Total Eclipse Of The Heart","id":"lcOxhH8N3Bo"},{"nom":"Boys Town Gang - Can't Take My Eyes Off You","id":"hvNdWwsAMzI"},{"nom":"Bronski Beat - Smalltown Boy","id":"88sARuFu-tc"},{"nom":"Bronski Beat - Why","id":"H3LbzjFJdSA"},{"nom":"Bruce Springsteen - Born In The USA","id":"EPhWR4d3FJQ"},{"nom":"Cher - If I Could Turn Back Time","id":"9n3A_-HRFfc"},{"nom":"Christopher Cross - Ride Like The Wind","id":"kA9uaBqvRtA"},{"nom":"Cyndi Lauper - Girls Just Want To Have Fun","id":"PIb6AZdTr-A"},{"nom":"Depeche Mode - Enjoy The Silence","id":"aGSKrC7dGcY"},{"nom":"Depeche Mode - Personal Jesus","id":"u1xrNaTO1bI"},{"nom":"Dire Straits - Money For Nothing","id":"wTP2RUD_cL0"},{"nom":"Duran Duran - Hungry Like The Wolf","id":"oJL-lCzEXgI"},{"nom":"Earth, Wind & Fire - Let's Groove","id":"Lrle0x_DHBM"},{"nom":"Elton John - I'm Still Standing","id":"ZHwVBirqD2s"},{"nom":"Europe - The Final Countdown","id":"9jK-NcRmVcw"},{"nom":"Eurythmics - Sweet Dreams (Are Made Of This)","id":"qeMFqkcPYcg"},{"nom":"F.R. David - Words","id":"PTsSk0r_Tq8"},{"nom":"Falco - Rock Me Amadeus","id":"cVikZ8Oe_XA"},{"nom":"Fine Young Cannibals - She Drives Me Crazy","id":"UtvmTu4zAMg"},{"nom":"Frankie Goes To Hollywood - Relax","id":"Yem_iEHiyJ0"},{"nom":"Huey Lewis & The News - The Power Of Love","id":"wBl2QGAIx1s"},{"nom":"INXS - Original Sin","id":"PTULqzrhBWA"},{"nom":"Irene Cara - Flashdance What A Feeling","id":"ILWSp0m9G2U"},{"nom":"Jermaine Jackson & Pia Zadora - When the Rain Begins to Fall","id":"aahViYznVTQ"},{"nom":"Jimmy Somerville - You Make Me Feel (Mighty Real)","id":"H4I_UsnRP0I"},{"nom":"Joan Jett & the Blackhearts - I Love Rock 'n' Roll","id":"wMsazR6Tnf8"},{"nom":"Journey - Don't Stop Believin'","id":"1k8craCGpgs"},{"nom":"Katrina & The Waves - Walking On Sunshine","id":"iPUmE-tne5U"},{"nom":"Kim Carnes - Bette Davis Eyes","id":"EPOIS5taqA8"},{"nom":"Kim Wilde - You Came","id":"P6Agwu_5J14"},{"nom":"Kool & The Gang - Celebration","id":"3GwjfUFyY6M"},{"nom":"Laura Branigan - Self Control","id":"RP0_8J7uxhs"},{"nom":"Lionel Richie - All Night Long","id":"nqAvFx3NxUM"},{"nom":"Lisa Stansfield - All Around the World","id":"JVuuatjHGnY"},{"nom":"Madonna - Holiday","id":"5Rswx2Z7SDw"},{"nom":"Madonna - Into The Groove","id":"52iW3lcpK5M"},{"nom":"Madonna - La Isla Bonita","id":"zpzdgmqIHOQ"},{"nom":"Madonna - Like A Virgin","id":"s__rX_WL100"},{"nom":"Marc Cohn - Walking in Memphis","id":"PgRafRp-P-o"},{"nom":"Men At Work - Who Can It Be Now","id":"SECVGN4Bsgg"},{"nom":"Michael Jackson - Beat It","id":"oRdxUFDoQe0"},{"nom":"Michael Jackson - Billie Jean","id":"Zi_XLOBDo_Y"},{"nom":"Michael Jackson - The Way You Make Me Feel","id":"HzZ_urpj4As"},{"nom":"Michael Jackson - Thriller","id":"sOnqjkJTMaA"},{"nom":"Michael Sembello - Maniac","id":"324it5DKoXU"},{"nom":"Midnight Oil - Beds Are Burning","id":"ejorQVy3m8E"},{"nom":"Mike Oldfield - Moonlight Shadow","id":"e80qhyovOnA"},{"nom":"Modern Talking - You're My Heart, You're My Soul","id":"4kHl4FoK1Ys"},{"nom":"Murray Head - One Night In Bangkok","id":"rgc_LRjlbTU"},{"nom":"New Order - Blue Monday","id":"9GMjH1nR0ds"},{"nom":"Nik Kershaw - The Riddle","id":"bDygS0a6Tgo"},{"nom":"Nirvana - About A Girl (MTV Unplugged)","id":"AhcttcXcRYY"},{"nom":"OMD - Enola Gay","id":"d5XJ2GiR6Bo"},{"nom":"Pet Shop Boys - It's A Sin","id":"dRHetRTOD1Q"},{"nom":"Pet Shop Boys - West End Girls","id":"p3j2NYZ8FKs"},{"nom":"Peter Gabriel - Sledgehammer","id":"OJWJE0x7T4Q"},{"nom":"Phil Collins - Another Day In Paradise","id":"Qt2mbGP6vFI"},{"nom":"Phil Collins - Two Hearts","id":"SidxJz94Svs"},{"nom":"Prince - Kiss","id":"H9tEvfIsDyo"},{"nom":"Prince - Purple Rain","id":"TvnYmWpD_T8"},{"nom":"Queen & David Bowie - Under Pressure","id":"a01QQZyl-_I"},{"nom":"Queen - Another One Bites The Dust","id":"rY0WxgSXdEE"},{"nom":"Raf - Self Control","id":"1_TQjEn6cpQ"},{"nom":"Rick Astley - Never Gonna Give You Up","id":"dQw4w9WgXcQ"},{"nom":"Rozalla - Everybody's Free (To Feel Good)","id":"95_dAQHui94"},{"nom":"Ryan Paris - Dolce Vita","id":"EXmABxvHTG4"},{"nom":"Sam Brown - Stop","id":"eIdHbK6onkY"},{"nom":"Seal - Crazy","id":"4Fc67yQsPqQ"},{"nom":"Sheila - Spacer","id":"xeRfywfkd8o"},{"nom":"Simple Minds - Don't You (Forget About Me)","id":"CdqoNKCCt7A"},{"nom":"Soft Cell - Tainted Love","id":"XZVpR3Pk-r8"},{"nom":"Spandau Ballet - True","id":"AR8D2yqgQ1U"},{"nom":"Status Quo - In The Army Now","id":"EIxsPBbZ_b8"},{"nom":"Sting - Englishman In New York","id":"d27gTrPPAyk"},{"nom":"Survivor - Eye Of The Tiger","id":"btPJPFnesV4"},{"nom":"Talk Talk - It's My Life","id":"cFH5JgyZK1I"},{"nom":"Talk Talk - Such A Shame","id":"lLdvpFIPReA"},{"nom":"Tears For Fears - Everybody Wants To Rule The World","id":"aGCdLKXNF3w"},{"nom":"Tears For Fears - Sowing The Seeds Of Love","id":"VAtGOESO7W8"},{"nom":"Telephone - Cendrillon","id":"_GCxnoNq74U"},{"nom":"Texas - I Don't Want A Lover","id":"KHLchEtMKQg"},{"nom":"The Bangles - Eternal Flame","id":"PSoOFn3wQV4"},{"nom":"The Bangles - Walk Like An Egyptian","id":"Cv6tuzHUuuk"},{"nom":"The Beloved - Sweet Harmony","id":"rP9Z5Pc8cRM"},{"nom":"The Communards - Don't Leave Me This Way","id":"1RHBAd5YUR8"},{"nom":"The Communards - Never Can Say Goodbye","id":"Hvlv5qrhDUM"},{"nom":"The Cure - Friday I'm In Love","id":"mGgMZpGYiy8"},{"nom":"The Pointer Sisters - I'm So Excited","id":"8iwBM_YB1sE"},{"nom":"The Police - Every Breath You Take","id":"OMOGaugKpzs"},{"nom":"Tina Turner - The Best","id":"GC5E8ie2pdM"},{"nom":"Toto - Africa","id":"FTQbiNvZqaY"},{"nom":"Tracy Chapman - Talkin' Bout A Revolution","id":"Xv8FBjo1Y8I"},{"nom":"U2 - I Still Haven't Found What I'm Looking For","id":"e3-5YC_oHjE"},{"nom":"U2 - New Year's Day","id":"jeYCyCaK_5k"},{"nom":"U2 - One","id":"ftjEcrrf7r0"},{"nom":"U2 - Pride (In The Name Of Love)","id":"LHcP4MWABGY"},{"nom":"U2 - Sunday Bloody Sunday","id":"Iqlzoz_jH3c"},{"nom":"U2 - With Or Without You","id":"ujNeHIo7oTE"},{"nom":"Wham! - Wake Me Up Before You Go-Go","id":"pIgZ7gMze7A"},{"nom":"Whitney Houston - I Wanna Dance With Somebody","id":"eH3giaIzONA"},{"nom":"Womack & Womack - Teardrops","id":"R8AOAap6_k4"},{"nom":"ZZ Top - Gimme All Your Lovin'","id":"Ae829mFAGGE"},{"nom":"a-ha - The Sun Always Shines on T.V.","id":"a3ir9HC9vYg"}];
+let ytPlayer=null, ytOrdre=MA_PLAYLIST.map((_,i)=>i), ytPos=0, ytPret=false, ytDemarre=false;
+let ytMelange=JSON.parse(localStorage.getItem("radio80_ytMelange")||"false");
+
+function ytConstruireOrdre(){
+  ytOrdre=MA_PLAYLIST.map((_,i)=>i);
+  if(ytMelange){
+    for(let i=ytOrdre.length-1;i>0;i--){
+      const j=Math.floor(Math.random()*(i+1));
+      [ytOrdre[i],ytOrdre[j]]=[ytOrdre[j],ytOrdre[i]];
+    }
+  }
+}
+function ytAfficherListe(){
+  const ul=document.getElementById("listeYT");
+  ul.innerHTML="";
+  MA_PLAYLIST.forEach((p,i)=>{
+    const li=document.createElement("li");
+    li.style.cssText="display:flex;align-items:center;gap:10px;padding:12px;margin-bottom:7px;background:var(--carte);border-radius:12px;border:1px solid rgba(255,255,255,.09);cursor:pointer;font-size:.95rem";
+    li.innerHTML='<span class="num" style="color:var(--cyan);font-weight:700;min-width:2em;text-align:right">'+(i+1)+'</span><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+p.nom+'</span><span>📺</span>';
+    li.onclick=()=>{ ytJouer(ytOrdre.indexOf(i)); };
+    ul.appendChild(li);
+  });
+}
+function ytSurligner(){
+  const idx=ytOrdre[ytPos];
+  [...document.getElementById("listeYT").children].forEach((li,i)=>{
+    li.style.borderColor = i===idx ? "var(--jaune)" : "rgba(255,255,255,.09)";
+    li.style.background = i===idx ? "rgba(255,210,63,.12)" : "var(--carte)";
+  });
+}
+function ytJouer(pos){
+  if(!ytPret) return;
+  ytPos=(pos+ytOrdre.length)%ytOrdre.length;
+  ytPlayer.loadVideoById(MA_PLAYLIST[ytOrdre[ytPos]].id);
+  ytDemarre=true;
+  ytSurligner();
+}
+function initYT(){
+  if(ytPlayer) return;
+  ytConstruireOrdre();
+  ytAfficherListe();
+  document.getElementById("ytAleatoire").classList.toggle("actifMode", ytMelange);
+  const tag=document.createElement("script");
+  tag.src="https://www.youtube.com/iframe_api";
+  document.head.appendChild(tag);
+}
+window.onYouTubeIframeAPIReady=function(){
+  ytPlayer=new YT.Player("lecteurYT",{
+    width:"100%", height:"100%",
+    videoId:MA_PLAYLIST[ytOrdre[0]].id,
+    playerVars:{playsinline:1, rel:0},
+    events:{
+      onReady:()=>{ ytPret=true; ytSurligner();
+        const c=document.getElementById("cadreYT").firstElementChild;
+        if(c){ c.style.width="100%"; c.style.height="100%"; c.style.position="absolute"; c.style.inset="0"; }
+      },
+      onStateChange:(e)=>{
+        if(e.data===YT.PlayerState.ENDED) ytJouer(ytPos+1);
+        document.getElementById("ytLire").textContent = (e.data===YT.PlayerState.PLAYING) ? "⏸" : "▶";
+      }
+    }
+  });
+};
+document.getElementById("ytLire").onclick=()=>{
+  if(!ytPret) return;
+  if(!ytDemarre){ ytJouer(0); return; }
+  const etat=ytPlayer.getPlayerState();
+  etat===1 ? ytPlayer.pauseVideo() : ytPlayer.playVideo();
+};
+document.getElementById("ytSuivant").onclick=()=>ytJouer(ytPos+1);
+document.getElementById("ytPrecedent").onclick=()=>ytJouer(ytPos-1);
+document.getElementById("ytAleatoire").onclick=function(){
+  ytMelange=!ytMelange; localStorage.setItem("radio80_ytMelange",JSON.stringify(ytMelange));
+  const courant=ytOrdre[ytPos];
+  ytConstruireOrdre();
+  ytPos=Math.max(0, ytOrdre.indexOf(courant));
+  this.classList.toggle("actifMode", ytMelange);
+};
 </script>
 </body>
 </html>
